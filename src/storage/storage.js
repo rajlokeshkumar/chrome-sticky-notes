@@ -59,6 +59,17 @@ export async function saveDatapoints(datapoints) {
   await set({ datapoints })
 }
 
+// --- Notes ---
+
+export async function getNotes() {
+  const { notes = [] } = await get('notes')
+  return notes
+}
+
+export async function saveNotes(notes) {
+  await set({ notes })
+}
+
 // --- Projects ---
 
 export async function getProjects() {

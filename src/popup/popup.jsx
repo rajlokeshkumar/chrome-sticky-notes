@@ -4,6 +4,7 @@ import { useState, useEffect } from 'preact/hooks'
 import { getSettings, saveSettings } from '../storage/storage.js'
 import TestDataPanel from '../components/TestDataPanel.jsx'
 import DailyPlannerPanel from '../components/DailyPlannerPanel.jsx'
+import NotesPanel from '../components/NotesPanel.jsx'
 
 function App() {
   const [activePanel, setActivePanel] = useState('test-data')
@@ -70,7 +71,13 @@ function App() {
           class={`tab-btn ${activePanel === 'planner' ? 'active' : ''}`}
           onClick={() => switchPanel('planner')}
         >
-          Daily Planner
+          Planner
+        </button>
+        <button
+          class={`tab-btn ${activePanel === 'notes' ? 'active' : ''}`}
+          onClick={() => switchPanel('notes')}
+        >
+          Notes
         </button>
       </div>
 
@@ -78,6 +85,7 @@ function App() {
         <TestDataPanel rcValue={rcValue} onRcDismiss={() => setRcValue(null)} />
       )}
       {activePanel === 'planner' && <DailyPlannerPanel />}
+      {activePanel === 'notes' && <NotesPanel />}
 
       <div class="watermark">Developed by LOKI</div>
     </div>
