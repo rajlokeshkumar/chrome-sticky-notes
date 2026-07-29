@@ -95,11 +95,21 @@ export async function saveTasks(tasks) {
 // --- Settings ---
 
 export async function getSettings() {
-  const { settings = { lastSearchQuery: '', activePanel: 'test-data', theme: 'dark' } } = await get('settings')
+  const { settings = { lastSearchQuery: '', theme: 'dark' } } = await get('settings')
   return settings
 }
 
 export async function saveSettings(patch) {
   const current = await getSettings()
   await set({ settings: { ...current, ...patch } })
+}
+
+// Active panel stored separately so it persists before popup closes
+export function saveActivePanel(panel) {
+  chrome.storage.local.set({ activePanel: panel })
+}
+
+export async function getActivePanel() {
+  const { activePanel = 'test-data' } = await get('activePanel')
+  return activePanel
 }

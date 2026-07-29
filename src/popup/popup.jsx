@@ -1,7 +1,7 @@
 /** @jsxImportSource preact */
 import { render } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
-import { getSettings, saveSettings } from '../storage/storage.js'
+import { getSettings, saveSettings, getActivePanel, saveActivePanel } from '../storage/storage.js'
 import TestDataPanel from '../components/TestDataPanel.jsx'
 import DailyPlannerPanel from '../components/DailyPlannerPanel.jsx'
 import NotesPanel from '../components/NotesPanel.jsx'
@@ -12,8 +12,8 @@ function App() {
   const [rcValue, setRcValue] = useState(null)
 
   useEffect(() => {
+    getActivePanel().then(setActivePanel)
     getSettings().then(s => {
-      if (s.activePanel) setActivePanel(s.activePanel)
       const t = s.theme || 'dark'
       setTheme(t)
       document.documentElement.setAttribute('data-theme', t)
@@ -31,7 +31,7 @@ function App() {
 
   function switchPanel(panel) {
     setActivePanel(panel)
-    saveSettings({ activePanel: panel })
+    saveActivePanel(panel)
   }
 
   function toggleTheme() {
