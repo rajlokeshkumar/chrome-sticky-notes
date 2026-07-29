@@ -29,9 +29,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  width: 420px;
-  min-height: 480px;
-  max-height: 600px;
+  width: 380px;
+  max-width: 380px;
+  height: 560px;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -42,7 +42,9 @@ body {
 #app {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  width: 380px;
+  height: 560px;
+  overflow: hidden;
 }
 
 /* Tabs */
@@ -73,6 +75,7 @@ body {
 /* Panel */
 .panel {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -536,6 +539,7 @@ body {
 /* Note editor */
 .note-editor {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -561,6 +565,7 @@ body {
 .note-editor-name:focus { border-bottom-color: var(--accent); }
 .note-textarea {
   flex: 1;
+  min-height: 0;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -572,6 +577,8 @@ body {
   outline: none;
   font-family: var(--font);
   overflow-y: auto;
+  box-sizing: border-box;
+  width: 100%;
 }
 .note-textarea:focus { border-color: var(--accent); }
 

@@ -47,7 +47,7 @@ function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', minHeight: 0 }}>
       <div class="app-header">
         <span class="app-header-title">📌 Sticky Notes</span>
         <div class="header-actions">
