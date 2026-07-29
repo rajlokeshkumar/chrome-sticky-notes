@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks'
 
 const HISTORY_CAP = 5
 
-export default function DatapointRow({ dp, index, currentDomain, onUpdate, onDelete, onCopied }) {
+export default function DatapointRow({ dp, index, currentDomain, projects = [], onUpdate, onDelete, onCopied }) {
   const [editingLabel, setEditingLabel] = useState(false)
   const [editingValue, setEditingValue] = useState(false)
   const [labelDraft, setLabelDraft] = useState(dp.label)
@@ -121,6 +121,28 @@ export default function DatapointRow({ dp, index, currentDomain, onUpdate, onDel
             )}
             <button class="btn btn-danger" onClick={() => onDelete(dp.id)}>Delete</button>
           </div>
+          {projects.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Move to:</span>
+              <button
+                class="btn btn-icon"
+                style={{ fontSize: '11px', ...(dp.projectId == null ? { color: 'var(--accent)' } : {}) }}
+                onClick={() => { onUpdate(dp.id, { projectId: null }); setShowHistory(false) }}
+              >
+                All
+              </button>
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  class="btn btn-icon"
+                  style={{ fontSize: '11px', borderColor: p.color + '88', color: dp.projectId === p.id ? p.color : 'var(--text-muted)' }}
+                  onClick={() => { onUpdate(dp.id, { projectId: p.id }); setShowHistory(false) }}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

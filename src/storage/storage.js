@@ -59,6 +59,17 @@ export async function saveDatapoints(datapoints) {
   await set({ datapoints })
 }
 
+// --- Projects ---
+
+export async function getProjects() {
+  const { projects = [] } = await get('projects')
+  return projects
+}
+
+export async function saveProjects(projects) {
+  await set({ projects })
+}
+
 // --- Tasks ---
 
 export async function getTasks() {

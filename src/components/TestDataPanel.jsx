@@ -1,13 +1,17 @@
 /** @jsxImportSource preact */
 import { useState, useEffect, useRef } from 'preact/hooks'
-import { getDatapoints, saveDatapoints, getSettings, saveSettings } from '../storage/storage.js'
+import { getDatapoints, saveDatapoints, getProjects, saveProjects, getSettings, saveSettings } from '../storage/storage.js'
 import DatapointRow from './DatapointRow.jsx'
 import BulkPaste from './BulkPaste.jsx'
 import ReverseCaptureBar from './ReverseCaptureBar.jsx'
 import { nanoid } from '../utils/nanoid.js'
 
+const PALETTE = ['#89b4fa','#a6e3a1','#fab387','#f38ba8','#cba6f7','#94e2d5','#f9e2af','#89dceb']
+
 export default function TestDataPanel({ rcValue, onRcDismiss }) {
   const [datapoints, setDatapoints] = useState([])
+  const [projects, setProjects] = useState([])
+  const [activeProject, setActiveProject] = useState('all') // 'all' | project id
   const [search, setSearch] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [newValue, setNewValue] = useState('')
@@ -16,14 +20,18 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
   const [toast, setToast] = useState('')
   const [currentDomain, setCurrentDomain] = useState('')
   const [domainFilter, setDomainFilter] = useState(true)
+  const [addingProject, setAddingProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
   const searchRef = useRef(null)
+  const projectInputRef = useRef(null)
 
   useEffect(() => {
-    getDatapoints().then(setDatapoints)
-    getSettings().then(s => {
+    Promise.all([getDatapoints(), getProjects(), getSettings()]).then(([dps, projs, s]) => {
+      setDatapoints(dps)
+      setProjects(projs)
       if (s.lastSearchQuery !== undefined) setSearch(s.lastSearchQuery)
+      if (s.activeProject) setActiveProject(s.activeProject)
     })
-    // Get current tab domain for URL-aware surfacing
     chrome.tabs?.query({ active: true, currentWindow: true }, (tabs) => {
       try {
         const url = new URL(tabs[0]?.url || '')
@@ -37,18 +45,60 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
     saveSettings({ lastSearchQuery: search })
   }, [search])
 
-  async function persist(updated) {
+  useEffect(() => {
+    if (addingProject) setTimeout(() => projectInputRef.current?.focus(), 50)
+  }, [addingProject])
+
+  async function persistDps(updated) {
     setDatapoints(updated)
     await saveDatapoints(updated)
   }
 
+  async function persistProjects(updated) {
+    setProjects(updated)
+    await saveProjects(updated)
+  }
+
+  function switchProject(id) {
+    setActiveProject(id)
+    saveSettings({ activeProject: id })
+  }
+
+  async function addProject() {
+    const name = newProjectName.trim()
+    if (!name) { setAddingProject(false); return }
+    const color = PALETTE[projects.length % PALETTE.length]
+    const proj = { id: nanoid(), name, color }
+    const updated = [...projects, proj]
+    await persistProjects(updated)
+    setNewProjectName('')
+    setAddingProject(false)
+    switchProject(proj.id)
+  }
+
+  async function deleteProject(id) {
+    const updated = projects.filter(p => p.id !== id)
+    await persistProjects(updated)
+    // Unassign datapoints that belonged to this project
+    const updatedDps = datapoints.map(d => d.projectId === id ? { ...d, projectId: null } : d)
+    await persistDps(updatedDps)
+    if (activeProject === id) switchProject('all')
+  }
+
   function filtered() {
     let list = [...datapoints]
-    // Domain filter: if current domain has any associated datapoints, show only those
+
+    // Project filter
+    if (activeProject !== 'all') {
+      list = list.filter(d => d.projectId === activeProject)
+    }
+
+    // Domain filter
     if (domainFilter && currentDomain) {
       const domainMatches = list.filter(d => d.domain === currentDomain)
       if (domainMatches.length > 0) list = domainMatches
     }
+
     const q = search.trim().toLowerCase()
     if (!q) return list
     const pinned = list.filter(d => d.pinned)
@@ -69,44 +119,43 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
     if (!label) { setAddError('Label is required'); return }
     if (!value) { setAddError('Value is required'); return }
     setAddError('')
-    const dp = { id: nanoid(), label, value, pinned: false, type: 'data', domain: '', history: [], created: today(), updated: today() }
-    const updated = [...datapoints, dp]
-    await persist(updated)
+    const dp = {
+      id: nanoid(), label, value, pinned: false, type: 'data', domain: '',
+      projectId: activeProject !== 'all' ? activeProject : null,
+      history: [], created: today(), updated: today()
+    }
+    await persistDps([...datapoints, dp])
     setNewLabel('')
     setNewValue('')
   }
 
   async function updateDatapoint(id, changes) {
     const updated = datapoints.map(d => d.id === id ? { ...d, ...changes, updated: today() } : d)
-    await persist(updated)
+    await persistDps(updated)
   }
 
   async function deleteDatapoint(id) {
-    const updated = datapoints.filter(d => d.id !== id)
-    await persist(updated)
+    await persistDps(datapoints.filter(d => d.id !== id))
   }
 
   async function handleBulkImport(rows) {
     const newRows = rows.map(r => ({
-      id: nanoid(),
-      label: r.label,
-      value: r.value,
-      pinned: false,
-      type: 'data',
-      domain: '',
-      history: [],
-      created: today(),
-      updated: today(),
+      id: nanoid(), label: r.label, value: r.value, pinned: false, type: 'data', domain: '',
+      projectId: activeProject !== 'all' ? activeProject : null,
+      history: [], created: today(), updated: today(),
     }))
-    const updated = [...datapoints, ...newRows]
-    await persist(updated)
+    await persistDps([...datapoints, ...newRows])
     setShowBulk(false)
     showToast(`${newRows.length} datapoints imported`)
   }
 
   async function handleRcSave(label, value) {
-    const dp = { id: nanoid(), label: label.trim(), value: value.trim(), pinned: false, type: 'data', domain: '', history: [], created: today(), updated: today() }
-    await persist([...datapoints, dp])
+    const dp = {
+      id: nanoid(), label: label.trim(), value: value.trim(), pinned: false, type: 'data',
+      domain: '', projectId: activeProject !== 'all' ? activeProject : null,
+      history: [], created: today(), updated: today()
+    }
+    await persistDps([...datapoints, dp])
     onRcDismiss()
     showToast('Saved')
   }
@@ -114,26 +163,62 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
   const visibleList = filtered()
   const pinnedList = visibleList.filter(d => d.pinned)
   const unpinnedList = visibleList.filter(d => !d.pinned)
+  const activeProj = projects.find(p => p.id === activeProject)
 
   return (
     <div class="panel">
       {rcValue && (
-        <ReverseCaptureBar
-          value={rcValue}
-          onSave={handleRcSave}
-          onDismiss={onRcDismiss}
-        />
+        <ReverseCaptureBar value={rcValue} onSave={handleRcSave} onDismiss={onRcDismiss} />
       )}
 
+      {/* Project selector */}
+      <div class="project-bar">
+        <button
+          class={`project-pill ${activeProject === 'all' ? 'active' : ''}`}
+          style={activeProject === 'all' ? { background: 'var(--accent)' } : {}}
+          onClick={() => switchProject('all')}
+        >
+          All
+        </button>
+        {projects.map(p => (
+          <button
+            key={p.id}
+            class={`project-pill ${activeProject === p.id ? 'active' : ''}`}
+            style={activeProject === p.id ? { background: p.color } : { borderColor: p.color + '88', color: p.color }}
+            onClick={() => switchProject(p.id)}
+          >
+            {p.name}
+            <span
+              class="project-pill-x"
+              onClick={e => { e.stopPropagation(); deleteProject(p.id) }}
+              title="Delete project"
+            >×</span>
+          </button>
+        ))}
+        {addingProject ? (
+          <input
+            ref={projectInputRef}
+            class="project-add-input"
+            placeholder="Project name…"
+            value={newProjectName}
+            onInput={e => setNewProjectName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addProject(); if (e.key === 'Escape') { setAddingProject(false); setNewProjectName('') } }}
+            onBlur={addProject}
+          />
+        ) : (
+          <button class="project-pill" onClick={() => setAddingProject(true)} title="Add project">+ Project</button>
+        )}
+      </div>
+
+      {/* Search */}
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
         <input
           ref={searchRef}
           class="search-input"
-          placeholder="Search label or value…"
+          placeholder={activeProj ? `Search in ${activeProj.name}…` : 'Search label or value…'}
           value={search}
           onInput={e => setSearch(e.target.value)}
-          onKeyDown={e => handleSearchKey(e, visibleList)}
         />
       </div>
 
@@ -146,36 +231,30 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
         </div>
       )}
 
+      {/* Datapoint list */}
       <div class="dp-list">
-        {pinnedList.length > 0 && (
-          <>
-            {pinnedList.map((dp, i) => (
-              <DatapointRow
-                key={dp.id}
-                dp={dp}
-                index={i}
-                currentDomain={currentDomain}
-                onUpdate={updateDatapoint}
-                onDelete={deleteDatapoint}
-                onCopied={showToast}
-              />
-            ))}
-          </>
-        )}
+        {pinnedList.map((dp, i) => (
+          <DatapointRow
+            key={dp.id} dp={dp} index={i}
+            currentDomain={currentDomain} projects={projects}
+            onUpdate={updateDatapoint} onDelete={deleteDatapoint} onCopied={showToast}
+          />
+        ))}
         {unpinnedList.map((dp, i) => (
           <DatapointRow
-            key={dp.id}
-            dp={dp}
-            index={pinnedList.length + i}
-            currentDomain={currentDomain}
-            onUpdate={updateDatapoint}
-            onDelete={deleteDatapoint}
-            onCopied={showToast}
+            key={dp.id} dp={dp} index={pinnedList.length + i}
+            currentDomain={currentDomain} projects={projects}
+            onUpdate={updateDatapoint} onDelete={deleteDatapoint} onCopied={showToast}
           />
         ))}
         {visibleList.length === 0 && (
           <div class="empty">
-            {search ? 'No matches' : 'No datapoints yet.\nUse the form below to add one.'}
+            {search
+              ? 'No matches'
+              : activeProject !== 'all'
+                ? `No datapoints in ${activeProj?.name ?? 'this project'} yet.`
+                : 'No datapoints yet.\nUse the form below to add one.'
+            }
           </div>
         )}
       </div>
@@ -206,8 +285,8 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
           </div>
           {addError && <div class="field-error">{addError}</div>}
           <div class="footer-row">
-            <button class="btn btn-icon" title="Bulk paste" onClick={() => setShowBulk(true)}>⊞ Bulk</button>
-            <button class="btn btn-icon" title="Export JSON" onClick={exportData}>↓ Export</button>
+            <button class="btn btn-icon" onClick={() => setShowBulk(true)}>⊞ Bulk</button>
+            <button class="btn btn-icon" onClick={async () => { const { default: dl } = await import('../utils/export.js'); dl() }}>↓ Export</button>
           </div>
         </>
       )}
@@ -215,33 +294,6 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
       {toast && <div class="toast">{toast}</div>}
     </div>
   )
-
-  function handleSearchKey(e, list) {
-    if (['1', '2', '3'].includes(e.key)) {
-      const idx = parseInt(e.key) - 1
-      if (list[idx]) {
-        copyToClipboard(list[idx].value)
-        showToast(`Copied: ${list[idx].label}`)
-        window.close()
-      }
-    }
-  }
-
-  async function exportData() {
-    const { default: dl } = await import('../utils/export.js')
-    dl()
-  }
-}
-
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).catch(() => {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    ta.remove()
-  })
 }
 
 function today() {

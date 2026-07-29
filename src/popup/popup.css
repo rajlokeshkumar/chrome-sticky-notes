@@ -404,6 +404,54 @@ body {
   padding: 2px 0;
 }
 
+/* Project pills */
+.project-bar {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+.project-bar::-webkit-scrollbar { display: none; }
+
+.project-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.project-pill:hover { border-color: var(--text-muted); color: var(--text); }
+.project-pill.active { color: var(--surface) !important; border-color: transparent; }
+.project-pill-x {
+  font-size: 10px;
+  opacity: .55;
+  line-height: 1;
+  padding: 0 1px;
+}
+.project-pill-x:hover { opacity: 1; }
+.project-add-input {
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 3px 10px;
+  font-size: 11px;
+  outline: none;
+  width: 110px;
+  flex-shrink: 0;
+}
+
 /* Watermark */
 .watermark {
   text-align: center;
