@@ -22,6 +22,7 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
   const [domainFilter, setDomainFilter] = useState(true)
   const [addingProject, setAddingProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState(null) // project id
   const searchRef = useRef(null)
   const projectInputRef = useRef(null)
 
@@ -185,14 +186,32 @@ export default function TestDataPanel({ rcValue, onRcDismiss }) {
             key={p.id}
             class={`project-pill ${activeProject === p.id ? 'active' : ''}`}
             style={activeProject === p.id ? { background: p.color } : { borderColor: p.color + '88', color: p.color }}
-            onClick={() => switchProject(p.id)}
+            onClick={() => { if (confirmDeleteProject !== p.id) switchProject(p.id) }}
           >
-            {p.name}
-            <span
-              class="project-pill-x"
-              onClick={e => { e.stopPropagation(); deleteProject(p.id) }}
-              title="Delete project"
-            >×</span>
+            {confirmDeleteProject === p.id ? (
+              <>
+                <span style={{ fontSize: '10px' }}>Delete?</span>
+                <span
+                  class="project-pill-x"
+                  style={{ color: 'var(--danger)', opacity: 1, fontWeight: 700 }}
+                  onClick={e => { e.stopPropagation(); deleteProject(p.id); setConfirmDeleteProject(null) }}
+                >✓</span>
+                <span
+                  class="project-pill-x"
+                  style={{ opacity: 1 }}
+                  onClick={e => { e.stopPropagation(); setConfirmDeleteProject(null) }}
+                >✕</span>
+              </>
+            ) : (
+              <>
+                {p.name}
+                <span
+                  class="project-pill-x"
+                  onClick={e => { e.stopPropagation(); setConfirmDeleteProject(p.id) }}
+                  title="Delete project"
+                >×</span>
+              </>
+            )}
           </button>
         ))}
         {addingProject ? (

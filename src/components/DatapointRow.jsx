@@ -10,6 +10,7 @@ export default function DatapointRow({ dp, index, currentDomain, projects = [], 
   const [valueDraft, setValueDraft] = useState(dp.value)
   const [showHistory, setShowHistory] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // No auto-splitting on slash — user copies the full value always
 
@@ -119,7 +120,15 @@ export default function DatapointRow({ dp, index, currentDomain, projects = [], 
                 {dp.domain === currentDomain ? '× Unlink site' : '⌂ Link to site'}
               </button>
             )}
-            <button class="btn btn-danger" onClick={() => onDelete(dp.id)}>Delete</button>
+            {confirmDelete ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--danger)' }}>Delete?</span>
+                <button class="btn btn-danger" style={{ padding: '2px 8px' }} onClick={() => onDelete(dp.id)}>Yes</button>
+                <button class="btn btn-icon" style={{ padding: '2px 8px' }} onClick={() => setConfirmDelete(false)}>No</button>
+              </span>
+            ) : (
+              <button class="btn btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+            )}
           </div>
           {projects.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
